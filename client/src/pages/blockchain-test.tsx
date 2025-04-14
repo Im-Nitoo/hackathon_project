@@ -6,7 +6,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle2, XCircle, AlertCircle, Database } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, Database, Wallet, Cpu } from 'lucide-react';
+import { MetamaskConnector } from '@/components/blockchain/metamask-connector';
+import { ContractInteraction } from '@/components/blockchain/contract-interaction';
 
 export default function BlockchainTest() {
   const [ensName, setEnsName] = useState('');
@@ -123,6 +125,24 @@ export default function BlockchainTest() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+      
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Wallet className="mr-2 h-5 w-5" />
+            Connect Wallet
+          </h2>
+          <MetamaskConnector />
+        </div>
+        
+        <div>
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Cpu className="mr-2 h-5 w-5" />
+            Smart Contract
+          </h2>
+          <ContractInteraction />
+        </div>
+      </div>
 
       <Tabs defaultValue="ens" className="w-full">
         <TabsList className="grid grid-cols-2 w-full max-w-md">

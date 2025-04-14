@@ -16,6 +16,7 @@ import Dashboard from "@/pages/dashboard";
 import IPFSTest from "@/pages/ipfs-test";
 import BlockchainTest from "@/pages/blockchain-test";
 import { AuthProvider } from "@/lib/auth";
+import { Web3Provider } from "@/hooks/use-web3";
 
 function Router() {
   return (
@@ -39,14 +40,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100">
-          <Navbar />
-          <main className="flex-1">
-            <Router />
-          </main>
-          <Footer />
-        </div>
-        <Toaster />
+        <Web3Provider>
+          <div className="min-h-screen flex flex-col bg-neutral-100 dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100">
+            <Navbar />
+            <main className="flex-1">
+              <Router />
+            </main>
+            <Footer />
+          </div>
+          <Toaster />
+        </Web3Provider>
       </AuthProvider>
     </QueryClientProvider>
   );
