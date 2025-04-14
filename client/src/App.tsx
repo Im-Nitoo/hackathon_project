@@ -13,6 +13,7 @@ import Community from "@/pages/community";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
+import IPFSTest from "@/pages/ipfs-test";
 import { AuthProvider } from "@/lib/auth";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/ipfs-test" component={IPFSTest} />
       <Route component={NotFound} />
     </Switch>
   );
