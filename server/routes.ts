@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import * as crypto from "crypto";
-// Use mock implementations for server instead of client libs
+import { ipfs } from "./ipfs";
 import { 
   insertUserSchema, 
   insertArticleSchema, 
@@ -15,26 +15,6 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { WebSocketServer } from 'ws';
 import WebSocket from 'ws';
-
-// Mock IPFS client for server-side
-const ipfs = {
-  add: async (content: string, metadata: any = {}) => {
-    // Generate a fake IPFS hash that looks realistic
-    const hash = `Qm${crypto.randomBytes(44).toString('base64').replace(/[+/=]/g, '')}`;
-    console.log(`[IPFS Mock] Stored content with hash: ${hash}`);
-    return hash;
-  },
-  get: async (hash: string) => {
-    console.log(`[IPFS Mock] Retrieved content with hash: ${hash}`);
-    return JSON.stringify({
-      title: "Mock IPFS Content",
-      content: "This is mock content retrieved from IPFS"
-    });
-  },
-  getUrl: (hash: string) => {
-    return `https://ipfs.io/ipfs/${hash}`;
-  }
-};
 
 // Mock blockchain client for server-side
 const blockchain = {
@@ -484,6 +464,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Error fetching stats" });
+    }
+  });
+  
+  // Test IPFS integration
+  app.post('/api/test/ipfs', async (req, res) => {
+    try {
+      const { content } = req.body;
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+      
+      // Store content on IPFS
+      const hash = await ipfs.add(JSON.stringify({
+        content,
+        timestamp: new Date().toISOString()
+      }), {
+        name: 'IPFS Test',
+        description: 'Test content for IPFS integration'
+      });
+      
+      res.json({
+        success: true,
+        hash,
+        url: ipfs.getUrl(hash)
+      });
+    } catch (error) {
+      console.error('IPFS test error:', error);
+      res.status(500).json({ 
+        message: "Error testing IPFS integration", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
   
