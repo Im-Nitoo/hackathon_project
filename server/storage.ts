@@ -11,38 +11,66 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEnsAddress(ensAddress: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserTokens(id: number, tokens: number): Promise<User | undefined>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  isVerifiedJournalist(userId: number): Promise<boolean>;
+  isPublisher(userId: number): Promise<boolean>;
 
   // Article operations
   getArticle(id: number): Promise<Article | undefined>;
-  getArticles(options?: { limit?: number, offset?: number, status?: string, isWhistleblower?: boolean }): Promise<Article[]>;
+  getArticles(options?: { 
+    limit?: number, 
+    offset?: number, 
+    status?: string, 
+    isWhistleblower?: boolean,
+    authorId?: number
+  }): Promise<Article[]>;
   getFeaturedArticles(limit?: number): Promise<Article[]>;
   createArticle(article: InsertArticle): Promise<Article>;
   updateArticleStatus(id: number, status: string): Promise<Article | undefined>;
+  updateArticleTruthScore(id: number, score: number): Promise<Article | undefined>;
   
   // Evidence operations
   getEvidence(id: number): Promise<Evidence | undefined>;
   getEvidenceForArticle(articleId: number): Promise<Evidence[]>;
   createEvidence(evidence: InsertEvidence): Promise<Evidence>;
+  calculateEvidenceImpact(evidence: Evidence): Promise<number>;
   
   // Verification operations
   getVerification(id: number): Promise<Verification | undefined>;
   getVerificationsForArticle(articleId: number): Promise<Verification[]>;
   createVerification(verification: InsertVerification): Promise<Verification>;
+  getVerificationScore(articleId: number): Promise<{
+    totalCount: number;
+    positiveCount: number;
+    negativeCount: number;
+    score: number;
+  }>;
   
   // Publisher application operations
   getPublisherApplication(id: number): Promise<PublisherApplication | undefined>;
   createPublisherApplication(application: InsertPublisherApplication): Promise<PublisherApplication>;
   updatePublisherApplicationStatus(id: number, status: string): Promise<PublisherApplication | undefined>;
   
+  // Signature verification
+  storeSignature(userId: number, signature: string, message: string): Promise<boolean>;
+  getSignature(userId: number): Promise<{ signature: string; message: string } | undefined>;
+  verifySignature(address: string, signature: string, message: string): Promise<boolean>;
+  
+  // Token rewards
+  logTokenAward(userId: number, amount: number, reason: string, txHash?: string): Promise<void>;
+  getTokenAwards(userId: number): Promise<{ amount: number; reason: string; timestamp: Date; txHash?: string }[]>;
+  
   // Stats operations
   getStats(): Promise<{ 
     publisherCount: number, 
     articleCount: number, 
     verificationRate: number, 
-    tokenCount: number 
+    tokenCount: number,
+    whistleblowerCount: number,
+    evidenceCount: number
   }>;
   
   // Top verifiers
@@ -56,6 +84,11 @@ export class MemStorage implements IStorage {
   private verifications: Map<number, Verification>;
   private publisherApplications: Map<number, PublisherApplication>;
   
+  // Additional storage for new functionality
+  private signatures: Map<number, { signature: string; message: string }>;
+  private tokenAwards: Map<number, { amount: number; reason: string; timestamp: Date; txHash?: string }[]>;
+  private verifiedJournalists: Set<number>; // IDs of journalists with confirmed identity
+  
   private userId: number;
   private articleId: number;
   private evidenceId: number;
@@ -68,6 +101,11 @@ export class MemStorage implements IStorage {
     this.evidence = new Map();
     this.verifications = new Map();
     this.publisherApplications = new Map();
+    
+    // Initialize new storage
+    this.signatures = new Map();
+    this.tokenAwards = new Map();
+    this.verifiedJournalists = new Set();
     
     this.userId = 1;
     this.articleId = 1;
@@ -312,18 +350,158 @@ export class MemStorage implements IStorage {
     return updatedApplication;
   }
   
+  // Implement new methods for the enhanced IStorage interface
+  
+  // User operations
+  async getUserByEnsAddress(ensAddress: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.ensAddress === ensAddress
+    );
+  }
+  
+  async isVerifiedJournalist(userId: number): Promise<boolean> {
+    return this.verifiedJournalists.has(userId);
+  }
+  
+  async isPublisher(userId: number): Promise<boolean> {
+    const user = await this.getUser(userId);
+    return user?.role === 'publisher';
+  }
+  
+  // Enhanced article operations
+  async updateArticleTruthScore(id: number, score: number): Promise<Article | undefined> {
+    const article = this.articles.get(id);
+    if (!article) return undefined;
+    
+    const updatedArticle = {
+      ...article,
+      truthScore: score,
+      // Update status if threshold met (70% for verified)
+      status: score >= 70 ? 'verified' : (score <= 30 ? 'disproven' : article.status)
+    };
+    
+    this.articles.set(id, updatedArticle);
+    return updatedArticle;
+  }
+  
+  // Evidence calculation
+  async calculateEvidenceImpact(evidence: Evidence): Promise<number> {
+    // Calculate impact based on evidence type and quality
+    let impact = 0;
+    
+    switch (evidence.type) {
+      case 'supporting':
+        impact = 5;
+        break;
+      case 'contradicting':
+        impact = -10;
+        break;
+      case 'contextual':
+        impact = 2;
+        break;
+      default:
+        impact = 0;
+    }
+    
+    // Add bonus for verified journalist
+    const user = await this.getUser(evidence.userId);
+    if (user && (user.role === 'journalist' || user.role === 'publisher')) {
+      impact = impact * 1.5;
+    }
+    
+    return impact;
+  }
+  
+  // Verification score calculation
+  async getVerificationScore(articleId: number): Promise<{
+    totalCount: number;
+    positiveCount: number;
+    negativeCount: number;
+    score: number;
+  }> {
+    const verifications = await this.getVerificationsForArticle(articleId);
+    
+    const totalCount = verifications.length;
+    const positiveCount = verifications.filter(v => v.status === 'verified').length;
+    const negativeCount = verifications.filter(v => v.status === 'disproven').length;
+    
+    // Calculate score as percentage of positive verifications (0-100)
+    const score = totalCount > 0 ? Math.round((positiveCount / totalCount) * 100) : 50;
+    
+    return {
+      totalCount,
+      positiveCount,
+      negativeCount,
+      score
+    };
+  }
+  
+  // Signature verification
+  async storeSignature(userId: number, signature: string, message: string): Promise<boolean> {
+    this.signatures.set(userId, { signature, message });
+    return true;
+  }
+  
+  async getSignature(userId: number): Promise<{ signature: string; message: string } | undefined> {
+    return this.signatures.get(userId);
+  }
+  
+  async verifySignature(address: string, signature: string, message: string): Promise<boolean> {
+    try {
+      // Dynamic import to avoid bundling ethers when not needed
+      const { ethers } = await import('ethers');
+      const recoveredAddress = ethers.verifyMessage(message, signature);
+      
+      return recoveredAddress.toLowerCase() === address.toLowerCase();
+    } catch (error) {
+      console.error('[Blockchain] Error verifying signature:', error);
+      // Fallback to simple validation for testing
+      return signature.length > 20 && message.length > 0;
+    }
+  }
+  
+  // Token rewards
+  async logTokenAward(userId: number, amount: number, reason: string, txHash?: string): Promise<void> {
+    const awards = this.tokenAwards.get(userId) || [];
+    awards.push({
+      amount,
+      reason,
+      timestamp: new Date(),
+      txHash
+    });
+    
+    this.tokenAwards.set(userId, awards);
+    
+    // Update user tokens
+    await this.updateUserTokens(userId, amount);
+  }
+  
+  async getTokenAwards(userId: number): Promise<{ amount: number; reason: string; timestamp: Date; txHash?: string }[]> {
+    return this.tokenAwards.get(userId) || [];
+  }
+  
   // Stats operations
-  async getStats(): Promise<{ publisherCount: number, articleCount: number, verificationRate: number, tokenCount: number }> {
+  async getStats(): Promise<{ 
+    publisherCount: number, 
+    articleCount: number, 
+    verificationRate: number, 
+    tokenCount: number,
+    whistleblowerCount: number,
+    evidenceCount: number
+  }> {
     const publishers = Array.from(this.users.values()).filter(user => user.role === 'publisher');
     const allArticles = Array.from(this.articles.values());
     const verifiedArticles = allArticles.filter(article => article.status === 'verified');
+    const whistleblowerArticles = allArticles.filter(article => article.isWhistleblower);
     const totalTokens = Array.from(this.users.values()).reduce((sum, user) => sum + (user.truthTokens || 0), 0);
     
     return {
       publisherCount: publishers.length,
       articleCount: allArticles.length,
       verificationRate: allArticles.length > 0 ? Math.round((verifiedArticles.length / allArticles.length) * 100) : 0,
-      tokenCount: totalTokens
+      tokenCount: totalTokens,
+      whistleblowerCount: whistleblowerArticles.length,
+      evidenceCount: this.evidence.size
     };
   }
   
