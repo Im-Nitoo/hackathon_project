@@ -19,7 +19,8 @@ import {
   User,
   LogOut,
   Settings,
-  Database
+  Database,
+  Cpu
 } from "lucide-react";
 import { useState } from "react";
 
@@ -112,6 +113,12 @@ export default function Navbar() {
                       <span>IPFS Test</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/blockchain-test" className="cursor-pointer">
+                      <Cpu className="mr-2 h-4 w-4" />
+                      <span>Blockchain Test</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -176,6 +183,13 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
             >
               IPFS Test
+            </Link>
+            <Link
+              href="/blockchain-test"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Blockchain Test
             </Link>
           </div>
         )}

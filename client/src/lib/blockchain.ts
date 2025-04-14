@@ -32,15 +32,17 @@ class BlockchainClient {
   
   constructor() {
     // Try to get environment variables if available
-    this.providerUrl = import.meta.env.VITE_ETHEREUM_RPC_URL || null;
+    this.providerUrl = import.meta.env.VITE_ETHEREUM_PROVIDER || null;
     this.contractAddress = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || null;
+    this.network = import.meta.env.VITE_ETHEREUM_NETWORK || 'sepolia';
     
-    this.isConfigured = !!(this.providerUrl && this.contractAddress);
+    // We're configured with just a provider, even if we don't have a contract yet
+    this.isConfigured = !!this.providerUrl;
     
     if (this.isConfigured) {
-      console.log(`[Blockchain] Ethereum connection configured (${this.network})`);
+      console.log(`[Blockchain] Ethereum connection configured on ${this.network} network`);
     } else {
-      console.warn('[Blockchain] Running in simulation mode - no Ethereum provider/contract configured');
+      console.warn('[Blockchain] Running in simulation mode - no Ethereum provider configured');
     }
   }
   
