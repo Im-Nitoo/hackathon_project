@@ -1,4 +1,4 @@
-# Decentralized Truth Platform
+# TruthNode
 
 A decentralized platform for publishing and verifying news articles using blockchain technology and IPFS for content storage.
 
@@ -9,7 +9,6 @@ A decentralized platform for publishing and verifying news articles using blockc
 - 🔐 Blockchain-based authentication
 - 📦 IPFS-based content storage
 - 🌐 Web3 integration
-- 🎨 Modern UI with Tailwind CSS
 - 🔄 Real-time updates
 - 👥 Community-driven verification
 
@@ -136,19 +135,11 @@ npm run build
 npm run db:push
 ```
 
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## Security
 
 - All sensitive data should be stored in environment variables
 - Never commit `.env` files
-- Use secure Web3 practices
 - Follow security best practices for smart contracts
 
 ## License
