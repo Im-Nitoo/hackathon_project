@@ -3,9 +3,11 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: [
-    "./index.html",
+    "./client/index.html",
     "./client/src/**/*.{js,jsx,ts,tsx}",
-    "./client/index.html"
+    "./client/src/**/*.css",
+    "./shared/**/*.{js,jsx,ts,tsx}",
+    "./shared/**/*.css"
   ],
   theme: {
     container: {
